@@ -215,9 +215,9 @@ void ImuFilter::imuMagCallback(
   {
     geometry_msgs::Vector3Stamped rpy;
 
-    rpy.vector.x = roll * 180.0 / M_PI;
-    rpy.vector.y = pitch * 180.0 / M_PI;
-    rpy.vector.z = yaw * 180.0 / M_PI;
+    rpy.vector.x = roll;
+    rpy.vector.y = pitch;
+    rpy.vector.z = yaw ;
     rpy.header.stamp = time;
     rpy.header.frame_id = imu_frame_;
 
@@ -293,10 +293,6 @@ void ImuFilter::publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw)
   {
     geometry_msgs::Vector3Stamped rpy;
     tf::Matrix3x3(q).getRPY(rpy.vector.x, rpy.vector.y, rpy.vector.z);
-
-    rpy.vector.x *= 180 / M_PI;
-    rpy.vector.y *= 180 / M_PI;
-    rpy.vector.z *= 180 / M_PI;
 
     rpy.header = imu_msg_raw->header;
     orientation_filtered_publisher_.publish(rpy);

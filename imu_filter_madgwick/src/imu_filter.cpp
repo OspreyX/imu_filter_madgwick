@@ -48,7 +48,7 @@ ImuFilter::ImuFilter(ros::NodeHandle nh, ros::NodeHandle nh_private):
     constant_dt_ = 0.0;
 
   if (!nh_private_.getParam ("publish_debug_topics", publish_debug_topics_))
-    publish_debug_topics_= true;
+    publish_debug_topics_= false;
 
   if (!nh_private_.getParam ("mag_bias/x", mag_bias_x_))
     mag_bias_x_ = 0.0;
@@ -82,12 +82,6 @@ ImuFilter::ImuFilter(ros::NodeHandle nh, ros::NodeHandle nh_private):
 
   imu_publisher_ = nh_.advertise<sensor_msgs::Imu>(
     "imu/data", 5);
-
-  orientation_raw_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>(
-    "imu/rpy/raw", 5);
-
-  orientation_filtered_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>(
-    "imu/rpy/filtered", 5);
 
   // **** register subscribers
 
@@ -220,7 +214,8 @@ void ImuFilter::imuMagCallback(
     rpy.vector.z = yaw ;
     rpy.header.stamp = time;
     rpy.header.frame_id = imu_frame_;
-
+    
+    orientation_raw_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>("imu/rpy/raw", 5);
     orientation_raw_publisher_.publish(rpy);
   }
 
@@ -295,6 +290,7 @@ void ImuFilter::publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw)
     tf::Matrix3x3(q).getRPY(rpy.vector.x, rpy.vector.y, rpy.vector.z);
 
     rpy.header = imu_msg_raw->header;
+    orientation_filtered_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>("imu/rpy/filtered", 5);
     orientation_filtered_publisher_.publish(rpy);
   }
 }

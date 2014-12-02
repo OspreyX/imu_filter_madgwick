@@ -23,8 +23,6 @@
  */
 
 #include "imu_filter_madgwick/imu_filter.h"
-#include <geometry_msgs/Vector3Stamped.h>
-
 
 ImuFilter::ImuFilter(ros::NodeHandle nh, ros::NodeHandle nh_private):
   nh_(nh), 
@@ -49,8 +47,8 @@ ImuFilter::ImuFilter(ros::NodeHandle nh, ros::NodeHandle nh_private):
   if (!nh_private_.getParam ("constant_dt", constant_dt_))
     constant_dt_ = 0.0;
 
-  if (!nh_private_.getParam ("publish_debug_topic", publish_debug_topic_))
-    publish_debug_topic_= true;
+  if (!nh_private_.getParam ("publish_debug_topics", publish_debug_topics_))
+    publish_debug_topics_= true;
 
   if (!nh_private_.getParam ("mag_bias/x", mag_bias_x_))
     mag_bias_x_ = 0.0;
@@ -86,7 +84,7 @@ ImuFilter::ImuFilter(ros::NodeHandle nh, ros::NodeHandle nh_private):
     "imu/data", 5);
 
   orientation_raw_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>(
-    "/imu/rpy/raw", 5);
+    "imu/rpy/raw", 5);
 
   orientation_filtered_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>(
     "imu/rpy/filtered", 5);
@@ -192,8 +190,6 @@ void ImuFilter::imuMagCallback(
   my /= norm;
   mz /= norm;
 
-  /*** Tilt Compensation ***/
-  /***  From: http://cache.freescale.com/files/sensors/doc/app_note/AN4248.pdf (equation 22). ***/
   double sign = copysignf(1.0, lin_acc.z);
   double roll = atan2(lin_acc.x, sign * sqrt(lin_acc.x*lin_acc.x + lin_acc.z*lin_acc.z));
   double pitch = -atan2(lin_acc.y, sqrt(lin_acc.y*lin_acc.y + lin_acc.z*lin_acc.z));
@@ -206,7 +202,8 @@ void ImuFilter::imuMagCallback(
   double head_y = my;
   double head_z = mz;
 
-
+  /*** Tilt Compensation ***/
+  /***  From: http://cache.freescale.com/files/sensors/doc/app_note/AN4248.pdf (equation 22). ***/
   if(tilt_compensation_)
   {
     head_x = mx * cos_pitch + my * sin_pitch * sin_roll + mz * sin_pitch * cos_roll;
@@ -214,7 +211,7 @@ void ImuFilter::imuMagCallback(
     yaw = atan2(-head_y, head_x);
   }
 
-  if(publish_debug_topic_)
+  if(publish_debug_topics_)
   {
     geometry_msgs::Vector3Stamped rpy;
 
@@ -292,9 +289,7 @@ void ImuFilter::publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw)
   tf::quaternionTFToMsg(q, imu_msg->orientation);  
   imu_publisher_.publish(imu_msg);
 
-
-
-  if(publish_debug_topic_)
+  if(publish_debug_topics_)
   {
     geometry_msgs::Vector3Stamped rpy;
     tf::Matrix3x3(q).getRPY(rpy.vector.x, rpy.vector.y, rpy.vector.z);

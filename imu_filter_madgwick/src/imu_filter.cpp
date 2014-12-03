@@ -50,10 +50,12 @@ ImuFilter::ImuFilter(ros::NodeHandle nh, ros::NodeHandle nh_private):
   if (!nh_private_.getParam ("publish_debug_topics", publish_debug_topics_))
     publish_debug_topics_= false;
 
-  if (!nh_private_.getParam ("mag_bias/x", mag_bias_x_))
-    mag_bias_x_ = 0.0;
-  if (!nh_private_.getParam ("mag_bias/y", mag_bias_y_))
-    mag_bias_y_ = 0.0;
+  if (!nh_private_.getParam ("mag_bias/x", mag_bias_.x))
+    mag_bias_.x = 0.0;
+  if (!nh_private_.getParam ("mag_bias/y", mag_bias_.y))
+    mag_bias_.y = 0.0;
+  if (!nh_private_.getParam ("mag_bias/z", mag_bias_.z))
+    mag_bias_.z = 0.0;
 
   if (!nh_private_.getParam ("tilt_compensation", tilt_compensation_))
     tilt_compensation_= true;
@@ -82,6 +84,10 @@ ImuFilter::ImuFilter(ros::NodeHandle nh, ros::NodeHandle nh_private):
 
   imu_publisher_ = nh_.advertise<sensor_msgs::Imu>(
     "imu/data", 5);
+  rpy_raw_debug_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>(
+    "imu/rpy/raw", 5);
+  rpy_filtered_debug_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>(
+    "imu/rpy/filtered", 5);
 
   // **** register subscribers
 
@@ -174,39 +180,35 @@ void ImuFilter::imuMagCallback(
   imu_frame_ = imu_msg_raw->header.frame_id;
 
   /*** Compensate for hard iron ***/
-  double mx = mag_fld.x - mag_bias_x_;
-  double my = mag_fld.y - mag_bias_y_;
-  double mz = mag_fld.z;
+  double mx = mag_fld.x - mag_bias_.x;
+  double my = mag_fld.y - mag_bias_.y;
+  double mz = mag_fld.z - mag_bias_.z;
 
   /*** Normalize Magnetometer data***/
-  double norm = sqrt(mx * mx + my * my + mz * mz);
-  mx /= norm;
-  my /= norm;
-  mz /= norm;
-
-  double sign = copysignf(1.0, lin_acc.z);
-  double roll = atan2(lin_acc.x, sign * sqrt(lin_acc.x*lin_acc.x + lin_acc.z*lin_acc.z));
-  double pitch = -atan2(lin_acc.y, sqrt(lin_acc.y*lin_acc.y + lin_acc.z*lin_acc.z));
-  double cos_roll = cos(roll);
-  double sin_roll = sin(roll);
-  double cos_pitch = cos(pitch);
-  double sin_pitch = sin(pitch);
-  double yaw = 0.0;
-  double head_x = mx;
-  double head_y = my;
-  double head_z = mz;
-
-  /*** Tilt Compensation ***/
-  /***  From: http://cache.freescale.com/files/sensors/doc/app_note/AN4248.pdf (equation 22). ***/
-  if(tilt_compensation_)
-  {
-    head_x = mx * cos_pitch + my * sin_pitch * sin_roll + mz * sin_pitch * cos_roll;
-    head_y = my * cos_roll - mz * sin_roll;
-    yaw = atan2(-head_y, head_x);
-  }
+  // double norm = sqrt(mx * mx + my * my + mz * mz);
+  // mx /= norm;
+  // my /= norm;
+  // mz /= norm;
 
   if(publish_debug_topics_)
   {
+    double norm = sqrt(mx * mx + my * my + mz * mz);
+    mx /= norm;
+    my /= norm;
+    mz /= norm;
+    double sign = copysignf(1.0, lin_acc.z);
+    double roll = atan2(lin_acc.y, sign * sqrt(lin_acc.x*lin_acc.x + lin_acc.z*lin_acc.z));
+    double pitch = -atan2(lin_acc.x, sqrt(lin_acc.y*lin_acc.y + lin_acc.z*lin_acc.z));
+    double cos_roll = cos(roll);
+    double sin_roll = sin(roll);
+    double cos_pitch = cos(pitch);
+    double sin_pitch = sin(pitch);
+
+    double head_x = mx * cos_pitch + my * sin_pitch * sin_roll + mz * sin_pitch * cos_roll;
+    double head_y = my * cos_roll - mz * sin_roll;
+    double head_z = -mx * sin_pitch + my * cos_pitch * sin_roll + mz * cos_pitch * cos_roll;
+
+    double yaw = atan2(-head_y, head_x);
     geometry_msgs::Vector3Stamped rpy;
 
     rpy.vector.x = roll;
@@ -214,14 +216,33 @@ void ImuFilter::imuMagCallback(
     rpy.vector.z = yaw ;
     rpy.header.stamp = time;
     rpy.header.frame_id = imu_frame_;
-    
-    orientation_raw_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>("imu/rpy/raw", 5);
-    orientation_raw_publisher_.publish(rpy);
+
+    rpy_raw_debug_publisher_.publish(rpy);
   }
 
   if (!initialized_)
   {
     // initialize roll/pitch orientation from acc. vector.
+    double norm = sqrt(mx * mx + my * my + mz * mz);
+    mx /= norm;
+    my /= norm;
+    mz /= norm;
+    double sign = copysignf(1.0, lin_acc.z);f
+    double roll = atan2(lin_acc.y, sign * sqrt(lin_acc.x*lin_acc.x + lin_acc.z*lin_acc.z));
+    double pitch = -atan2(lin_acc.x, sqrt(lin_acc.y*lin_acc.y + lin_acc.z*lin_acc.z));
+    double yaw = 0.0;
+    double head_x = mx;
+    double head_y = my;
+    double head_z = mz;
+
+    double cos_roll = cos(roll);
+    double sin_roll = sin(roll);
+    double cos_pitch = cos(pitch);
+    double sin_pitch = sin(pitch);
+    head_x = mx * cos_pitch + my * sin_pitch * sin_roll + mz * sin_pitch * cos_roll;
+    head_y = my * cos_roll - mz * sin_roll;
+    head_z = -mx * sin_pitch + my * cos_pitch * sin_roll + mz * cos_pitch * cos_roll;
+    yaw = atan2(-head_y, head_x);
                         
     tf::Quaternion init_q = tf::createQuaternionFromRPY(roll, pitch, yaw);
     
@@ -250,7 +271,7 @@ void ImuFilter::imuMagCallback(
   madgwickAHRSupdate(
     ang_vel.x, ang_vel.y, ang_vel.z,
     lin_acc.x, lin_acc.y, lin_acc.z,
-    head_x, head_y, head_z,
+    mx, my, mz,
     dt);
 
   publishFilteredMsg(imu_msg_raw);
@@ -290,8 +311,7 @@ void ImuFilter::publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw)
     tf::Matrix3x3(q).getRPY(rpy.vector.x, rpy.vector.y, rpy.vector.z);
 
     rpy.header = imu_msg_raw->header;
-    orientation_filtered_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>("imu/rpy/filtered", 5);
-    orientation_filtered_publisher_.publish(rpy);
+    rpy_filtered_debug_publisher_.publish(rpy);
   }
 }
 

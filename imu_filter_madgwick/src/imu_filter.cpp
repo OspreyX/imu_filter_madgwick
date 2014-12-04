@@ -81,8 +81,13 @@ ImuFilter::ImuFilter(ros::NodeHandle nh, ros::NodeHandle nh_private):
   imu_publisher_ = nh_.advertise<sensor_msgs::Imu>(
     "imu/data", 5);
 
-  // **** register subscribers
+  rpy_filtered_debug_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>(
+    "imu/rpy/filtered", 5);
 
+  rpy_raw_debug_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>(
+    "imu/rpy/raw", 5);
+
+  // **** register subscribers
   // Synchronize inputs. Topic subscriptions happen on demand in the connection callback.
   int queue_size = 5;
 
@@ -198,8 +203,7 @@ void ImuFilter::imuMagCallback(
     rpy.header.stamp = time;
     rpy.header.frame_id = imu_frame_;
     
-    orientation_raw_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>("imu/rpy/raw", 5);
-    orientation_raw_publisher_.publish(rpy);
+    rpy_raw_debug_publisher_.publish(rpy);
   }
 
   if (!initialized_)
@@ -285,8 +289,7 @@ void ImuFilter::publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw)
     tf::Matrix3x3(q).getRPY(rpy.vector.x, rpy.vector.y, rpy.vector.z);
 
     rpy.header = imu_msg_raw->header;
-    orientation_filtered_publisher_ = nh_.advertise<geometry_msgs::Vector3Stamped>("imu/rpy/filtered", 5);
-    orientation_filtered_publisher_.publish(rpy);
+    rpy_filtered_debug_publisher_.publish(rpy);
   }
 }
 

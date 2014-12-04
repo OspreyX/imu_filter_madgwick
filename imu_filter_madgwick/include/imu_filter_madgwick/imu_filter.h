@@ -68,8 +68,8 @@ class ImuFilter
     boost::shared_ptr<ImuSubscriber> imu_subscriber_;
     boost::shared_ptr<MagSubscriber> mag_subscriber_;
 
-    ros::Publisher orientation_raw_publisher_;
-    ros::Publisher orientation_filtered_publisher_;
+    ros::Publisher rpy_filtered_debug_publisher_;
+    ros::Publisher rpy_raw_debug_publisher_;
     ros::Publisher imu_publisher_;
     tf::TransformBroadcaster tf_broadcaster_;
 

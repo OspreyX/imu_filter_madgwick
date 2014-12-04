@@ -105,6 +105,10 @@ class ImuFilter
     void publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw);
     void publishTransform(const ImuMsg::ConstPtr& imu_msg_raw);
 
+    void publishRawMsg(float ax, float ay, float az, 
+                       float mx, float my, float mz,
+                       ros::Time t);
+
     void madgwickAHRSupdate(float gx, float gy, float gz, 
                             float ax, float ay, float az, 
                             float mx, float my, float mz,

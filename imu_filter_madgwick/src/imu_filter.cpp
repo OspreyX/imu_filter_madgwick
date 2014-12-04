@@ -181,31 +181,6 @@ void ImuFilter::imuMagCallback(
   double my = mag_fld.y - mag_bias_.y;
   double mz = mag_fld.z - mag_bias_.z;
 
-  if(publish_debug_topics_)
-  {
-    double sign = copysignf(1.0, lin_acc.z);
-    double roll = atan2(lin_acc.y, sign * sqrt(lin_acc.x*lin_acc.x + lin_acc.z*lin_acc.z));
-    double pitch = -atan2(lin_acc.x, sqrt(lin_acc.y*lin_acc.y + lin_acc.z*lin_acc.z));
-    double cos_roll = cos(roll);
-    double sin_roll = sin(roll);
-    double cos_pitch = cos(pitch);
-    double sin_pitch = sin(pitch);
-    
-    /***  From: http://cache.freescale.com/files/sensors/doc/app_note/AN4248.pdf (equation 22). ***/
-    double head_x = mx * cos_pitch + my * sin_pitch * sin_roll + mz * sin_pitch * cos_roll;
-    double head_y = my * cos_roll - mz * sin_roll;
-    double yaw = atan2(-head_y, head_x);
-    geometry_msgs::Vector3Stamped rpy;
-
-    rpy.vector.x = roll;
-    rpy.vector.y = pitch;
-    rpy.vector.z = yaw ;
-    rpy.header.stamp = time;
-    rpy.header.frame_id = imu_frame_;
-    
-    rpy_raw_debug_publisher_.publish(rpy);
-  }
-
   if (!initialized_)
   {
     // initialize roll/pitch orientation from acc. vector. and yaw from magnetometer data.
@@ -255,6 +230,11 @@ void ImuFilter::imuMagCallback(
   publishFilteredMsg(imu_msg_raw);
   if (publish_tf_)
     publishTransform(imu_msg_raw);
+
+  if(publish_debug_topics_)
+    publishRawMsg(
+      lin_acc.x, lin_acc.y, lin_acc.z,
+      mx, my, mz, time);
 }
 
 void ImuFilter::publishTransform(const ImuMsg::ConstPtr& imu_msg_raw)
@@ -291,6 +271,34 @@ void ImuFilter::publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw)
     rpy.header = imu_msg_raw->header;
     rpy_filtered_debug_publisher_.publish(rpy);
   }
+}
+
+void ImuFilter::publishRawMsg( 
+  float ax, float ay, float az, 
+  float mx, float my, float mz, 
+  ros::Time t)
+{
+  double sign = copysignf(1.0, az);
+  double roll = atan2(ay, sign * sqrt(ax*ax + az*az));
+  double pitch = -atan2(ax, sqrt(ay*ay + az*az));
+  double cos_roll = cos(roll);
+  double sin_roll = sin(roll);
+  double cos_pitch = cos(pitch);
+  double sin_pitch = sin(pitch);
+
+  /***  From: http://cache.freescale.com/files/sensors/doc/app_note/AN4248.pdf (equation 22). ***/
+  double head_x = mx * cos_pitch + my * sin_pitch * sin_roll + mz * sin_pitch * cos_roll;
+  double head_y = my * cos_roll - mz * sin_roll;
+  double yaw = atan2(-head_y, head_x);
+  geometry_msgs::Vector3Stamped rpy;
+
+  rpy.vector.x = roll;
+  rpy.vector.y = pitch;
+  rpy.vector.z = yaw ;
+  rpy.header.stamp = t;
+  rpy.header.frame_id = imu_frame_;
+
+  rpy_raw_debug_publisher_.publish(rpy);
 }
 
 void ImuFilter::madgwickAHRSupdate(

@@ -46,10 +46,8 @@ ImuFilter::ImuFilter(ros::NodeHandle nh, ros::NodeHandle nh_private):
    fixed_frame_ = "odom";
   if (!nh_private_.getParam ("constant_dt", constant_dt_))
     constant_dt_ = 0.0;
-
   if (!nh_private_.getParam ("publish_debug_topics", publish_debug_topics_))
     publish_debug_topics_= false;
-
   if (!nh_private_.getParam ("mag_bias/x", mag_bias_.x))
     mag_bias_.x = 0.0;
   if (!nh_private_.getParam ("mag_bias/y", mag_bias_.y))
@@ -72,12 +70,10 @@ ImuFilter::ImuFilter(ros::NodeHandle nh, ros::NodeHandle nh_private):
     ROS_INFO("Using constant dt of %f sec", constant_dt_);
 
   // **** register dynamic reconfigure
-  
   FilterConfigServer::CallbackType f = boost::bind(&ImuFilter::reconfigCallback, this, _1, _2);
   config_server_.setCallback(f);
   
   // **** register publishers
-
   imu_publisher_ = nh_.advertise<sensor_msgs::Imu>(
     "imu/data", 5);
 
@@ -183,7 +179,7 @@ void ImuFilter::imuMagCallback(
 
   if (!initialized_)
   {
-    // initialize roll/pitch orientation from acc. vector. and yaw from magnetometer data.
+    // initialize roll/pitch orientation from acc. vector.
     double sign = copysignf(1.0, lin_acc.z);
     double roll = atan2(lin_acc.y, sign * sqrt(lin_acc.x*lin_acc.x + lin_acc.z*lin_acc.z));
     double pitch = -atan2(lin_acc.x, sqrt(lin_acc.y*lin_acc.y + lin_acc.z*lin_acc.z));
@@ -192,6 +188,7 @@ void ImuFilter::imuMagCallback(
     double cos_pitch = cos(pitch);
     double sin_pitch = sin(pitch);
     
+    // initialize yaw orientation from magnetometer data.
     /***  From: http://cache.freescale.com/files/sensors/doc/app_note/AN4248.pdf (equation 22). ***/
     double head_x = mx * cos_pitch + my * sin_pitch * sin_roll + mz * sin_pitch * cos_roll;
     double head_y = my * cos_roll - mz * sin_roll;
@@ -278,6 +275,7 @@ void ImuFilter::publishRawMsg(
   float mx, float my, float mz, 
   ros::Time t)
 {
+  // initialize roll/pitch orientation from acc. vector.
   double sign = copysignf(1.0, az);
   double roll = atan2(ay, sign * sqrt(ax*ax + az*az));
   double pitch = -atan2(ax, sqrt(ay*ay + az*az));
@@ -286,6 +284,7 @@ void ImuFilter::publishRawMsg(
   double cos_pitch = cos(pitch);
   double sin_pitch = sin(pitch);
 
+  // initialize yaw orientation from magnetometer data.
   /***  From: http://cache.freescale.com/files/sensors/doc/app_note/AN4248.pdf (equation 22). ***/
   double head_x = mx * cos_pitch + my * sin_pitch * sin_roll + mz * sin_pitch * cos_roll;
   double head_y = my * cos_roll - mz * sin_roll;
@@ -321,7 +320,6 @@ void ImuFilter::madgwickAHRSupdate(
 		return;
 	}
 
-	
 	// Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation)
 	if(!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) 
   {
@@ -423,7 +421,6 @@ void ImuFilter::madgwickAHRSupdate(
 	q2 *= recipNorm;
 	q3 *= recipNorm;
 }
-
 
 void ImuFilter::madgwickAHRSupdateIMU(
   float gx, float gy, float gz, 

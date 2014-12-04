@@ -180,16 +180,22 @@ void ImuFilter::imuMagCallback(
   imu_frame_ = imu_msg_raw->header.frame_id;
 
   /*** Compensate for hard iron ***/
-  double mbx = mag_fld.x - mag_bias_.x;
-  double mby = mag_fld.y - mag_bias_.y;
-  double mbz = mag_fld.z - mag_bias_.z;
+  double mx = mag_fld.x - mag_bias_.x;
+  double my = mag_fld.y - mag_bias_.y;
+  double mz = mag_fld.z - mag_bias_.z;
+
+  /*** Normalize Magnetometer data***/
+  // double norm = sqrt(mx * mx + my * my + mz * mz);
+  // mx /= norm;
+  // my /= norm;
+  // mz /= norm;
 
   if(publish_debug_topics_)
   {
-    double norm = sqrt(mbx * mbx + mby * mby + mbz * mbz);
-    double mx = mbx / norm;
-    double my = mby / norm;
-    double mz = mbz / norm;
+    double norm = sqrt(mx * mx + my * my + mz * mz);
+    mx /= norm;
+    my /= norm;
+    mz /= norm;
     double sign = copysignf(1.0, lin_acc.z);
     double roll = atan2(lin_acc.y, sign * sqrt(lin_acc.x*lin_acc.x + lin_acc.z*lin_acc.z));
     double pitch = -atan2(lin_acc.x, sqrt(lin_acc.y*lin_acc.y + lin_acc.z*lin_acc.z));
@@ -217,22 +223,26 @@ void ImuFilter::imuMagCallback(
   if (!initialized_)
   {
     // initialize roll/pitch orientation from acc. vector.
-    double norm = sqrt(mbx * mbx + mby * mby + mbz * mbz);
-    double mx = mbx / norm;
-    double my = mby / norm;
-    double mz = mbz / norm;
-    double sign = copysignf(1.0, lin_acc.z);
+    double norm = sqrt(mx * mx + my * my + mz * mz);
+    mx /= norm;
+    my /= norm;
+    mz /= norm;
+    double sign = copysignf(1.0, lin_acc.z);f
     double roll = atan2(lin_acc.y, sign * sqrt(lin_acc.x*lin_acc.x + lin_acc.z*lin_acc.z));
     double pitch = -atan2(lin_acc.x, sqrt(lin_acc.y*lin_acc.y + lin_acc.z*lin_acc.z));
+    double yaw = 0.0;
+    double head_x = mx;
+    double head_y = my;
+    double head_z = mz;
+
     double cos_roll = cos(roll);
     double sin_roll = sin(roll);
     double cos_pitch = cos(pitch);
     double sin_pitch = sin(pitch);
-
-    double head_x = mx * cos_pitch + my * sin_pitch * sin_roll + mz * sin_pitch * cos_roll;
-    double head_y = my * cos_roll - mz * sin_roll;
-    double head_z = -mx * sin_pitch + my * cos_pitch * sin_roll + mz * cos_pitch * cos_roll;
-    double yaw = atan2(-head_y, head_x);
+    head_x = mx * cos_pitch + my * sin_pitch * sin_roll + mz * sin_pitch * cos_roll;
+    head_y = my * cos_roll - mz * sin_roll;
+    head_z = -mx * sin_pitch + my * cos_pitch * sin_roll + mz * cos_pitch * cos_roll;
+    yaw = atan2(-head_y, head_x);
                         
     tf::Quaternion init_q = tf::createQuaternionFromRPY(roll, pitch, yaw);
     
@@ -261,7 +271,7 @@ void ImuFilter::imuMagCallback(
   madgwickAHRSupdate(
     ang_vel.x, ang_vel.y, ang_vel.z,
     lin_acc.x, lin_acc.y, lin_acc.z,
-    mbx, mby, mbz,
+    mx, my, mz,
     dt);
 
   publishFilteredMsg(imu_msg_raw);

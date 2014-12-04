@@ -50,10 +50,12 @@ ImuFilter::ImuFilter(ros::NodeHandle nh, ros::NodeHandle nh_private):
   if (!nh_private_.getParam ("publish_debug_topics", publish_debug_topics_))
     publish_debug_topics_= false;
 
-  if (!nh_private_.getParam ("mag_bias/x", mag_bias_x_))
-    mag_bias_x_ = 0.0;
-  if (!nh_private_.getParam ("mag_bias/y", mag_bias_y_))
-    mag_bias_y_ = 0.0;
+  if (!nh_private_.getParam ("mag_bias/x", mag_bias_.x))
+    mag_bias_.x = 0.0;
+  if (!nh_private_.getParam ("mag_bias/y", mag_bias_.y))
+    mag_bias_.y = 0.0;
+  if (!nh_private_.getParam ("mag_bias/y", mag_bias_.z))
+    mag_bias_.z = 0.0;
 
   if (!nh_private_.getParam ("tilt_compensation", tilt_compensation_))
     tilt_compensation_= true;
@@ -174,9 +176,9 @@ void ImuFilter::imuMagCallback(
   imu_frame_ = imu_msg_raw->header.frame_id;
 
   /*** Compensate for hard iron ***/
-  double mx = mag_fld.x - mag_bias_x_;
-  double my = mag_fld.y - mag_bias_y_;
-  double mz = mag_fld.z;
+  double mx = mag_fld.x - mag_bias_.x;
+  double my = mag_fld.y - mag_bias_.y;
+  double mz = mag_fld.z - mag_bias_.z;
 
   /*** Normalize Magnetometer data***/
   double norm = sqrt(mx * mx + my * my + mz * mz);

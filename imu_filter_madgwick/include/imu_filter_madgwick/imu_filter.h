@@ -85,8 +85,7 @@ class ImuFilter
     std::string imu_frame_;
     double constant_dt_;
     bool publish_debug_topics_;
-    double mag_bias_x_;
-    double mag_bias_y_;
+    geometry_msgs::Vector3 mag_bias_;
     bool tilt_compensation_;
 
     // **** state variables

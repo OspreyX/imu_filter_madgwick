@@ -86,9 +86,9 @@ class ImuFilter
     double constant_dt_;
     bool publish_debug_topics_;
     geometry_msgs::Vector3 mag_bias_;
+    double roll, pitch, yaw;
 
     // **** state variables
-  
     boost::mutex mutex_;
     bool initialized_;
     double q0, q1, q2, q3;  // quaternion
@@ -105,9 +105,8 @@ class ImuFilter
     void publishFilteredMsg(const ImuMsg::ConstPtr& imu_msg_raw);
     void publishTransform(const ImuMsg::ConstPtr& imu_msg_raw);
 
-    void publishRawMsg(float ax, float ay, float az, 
-                       float mx, float my, float mz,
-                       ros::Time t);
+    void publishRawMsg(const ros::Time& t,
+                       float& roll, float& pitch, float& yaw);
 
     void madgwickAHRSupdate(float gx, float gy, float gz, 
                             float ax, float ay, float az, 
@@ -119,7 +118,10 @@ class ImuFilter
                                float dt);
 
     void reconfigCallback(FilterConfig& config, uint32_t level);
-    
+
+    void computeRPY(float ax, float ay, float az, 
+                    float mx, float my, float mz,
+                    float& roll, float& pitch, float& yaw);
     // Fast inverse square-root
     // See: http://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Reciprocal_of_the_square_root
     static float invSqrt(float x)
